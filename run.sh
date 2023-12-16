@@ -13,6 +13,7 @@ python /sdcard/Extracted/payload_dumper.py /sdcard/Extracted/payload.bin
 rm /sdcard/Extracted/payload.bin
 rm /sdcard/Extracted/update_metadata_pb2.py
 rm /sdcard/Extracted/payload_dumper.py
+chmod 777 ./magiskboot
 ./magiskboot unpack /sdcard/Extracted/boot.img
 echo Script Finished
 
