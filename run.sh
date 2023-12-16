@@ -18,7 +18,7 @@ rm /sdcard/Extracted/update_metadata_pb2.py
 rm /sdcard/Extracted/payload_dumper.py
 rm /sdcard/Extracted/magiskboot
 cd ~
-rmdir -R ./Kernel-and-Boot-Extractor-From-Payload.bin
+rmdir --ignore-fail-on-non-empty ./Kernel-and-Boot-Extractor-From-Payload.bin
 
 echo Script Finished
 echo your extracted stuffs are in /sdcard/Extracted
