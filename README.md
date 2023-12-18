@@ -5,7 +5,7 @@ this script can only Extract ROMs of Dynamic partition devices i•e ROMs zip wh
 Run this command in Termux
 # &lt;copy and paste this command in Termux&gt; element
 ## Installation
-$ pkg install git npm install 
+$ pkg install git
 $ git clone https://github.com/memorydead/Kernel-and-Boot-Extractor-From-Payload.bin
 $ cd Kernel-and-Boot-Extractor-From-Payload.bin
 $ chmod 777 ./run.sh
