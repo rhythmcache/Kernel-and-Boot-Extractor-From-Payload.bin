@@ -1,5 +1,6 @@
->This Script will only Work On Termux
->This Script only Support ROMs od Dynamic Partitioned Device i•e ROMs Zip which contain Payload.bin file
+## Usage
+This Script will only Work On Termux.
+This Script only Support ROMs of Dynamic Partitioned Device i•e ROMs Zip which contain Payload.bin file.
 
 
 ## Installation
