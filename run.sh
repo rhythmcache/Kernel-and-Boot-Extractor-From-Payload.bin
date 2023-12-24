@@ -4,7 +4,6 @@ pkg install python -y
 pip install --upgrade pip
 pip install protobuf
 apt update && apt upgrade -y
-termux-setup-storage
 mkdir /sdcard/Extracted
 unzip /sdcard/rom.zip -d /sdcard/Extracted/
 cp ./payload_dumper.py /sdcard/Extracted
