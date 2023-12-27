@@ -12,3 +12,4 @@ cd Kernel-and-Boot-Extractor-From-Payload.bin
 chmod 777 ./run.sh
 ./run.sh
 ```
+video tutorial -> https://t.me/CepheusDumps/5
