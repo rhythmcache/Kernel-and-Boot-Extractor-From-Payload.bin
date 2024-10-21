@@ -6,9 +6,15 @@ pip install --upgrade pip
 pip install protobuf
 apt update && apt upgrade -y
 
+# Define color variables
+green='\033[0;32m'
+clear='\033[0m'
+
 # Prompt the user to manually enter the path to the ROM zip file and the extraction directory
-read -p "Please enter the full path to the ROM zip file (e.g., /path/to/rom.zip): " rom_path
-read -p "Please enter the full path where you want to extract the files (e.g., /path/to/Extracted): " extraction_dir
+echo -e "${green}Please enter the full path to the ROM zip file (e.g., /path/to/rom.zip):${clear}"
+read rom_path
+echo -e "${green}Please enter the full path where you want to extract the files (e.g., /path/to/Extracted):${clear}"
+read extraction_dir
 
 mkdir "$extraction_dir"
 unzip "$rom_path" -d "$extraction_dir/"
@@ -29,9 +35,6 @@ mv "$extraction_dir/magiskboot" ./
 mv "$extraction_dir/run.sh" ./
 
 cd ~
-green='\033[0;32m'
-red='\033[0;31m'
-clear='\033[0m'
 
 echo -e "${green}The script was executed successfully${clear}!"
-echo -e "${red}Your extracted files are in the folder you specified${clear}!"
+echo -e "${green}Your extracted files are in the folder you specified${clear}!"
