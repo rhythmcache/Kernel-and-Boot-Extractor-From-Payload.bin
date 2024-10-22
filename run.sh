@@ -1,4 +1,4 @@
-# Kernel Extractor Tool By @mem_reb
+# Kernel Extractor Tool By @e1phn
 # This tool will extract Kernel, boot.img, and all other partitions from payload.bin
 
 pkg install python -y
