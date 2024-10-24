@@ -3,15 +3,49 @@
 # Kernel Extractor Tool By @e1phn
 # This tool will extract Kernel, boot.img, and all other partitions from payload.bin
 
-# Set up storage and install necessary packages
+# Set up storage
 termux-setup-storage
-pkg update && apt upgrade -y
-pkg install python -y
-pip install --upgrade pip setuptools wheel
 
 # Define color variables
 green='\033[0;32m'
 clear='\033[0m'
+
+# Function to display the ASCII art banner
+display_banner() {
+    echo -e "${green}"
+    echo "  ___                    ___           _              _ "
+    echo " |   \ _  _ _ __  _ __  | _ \__ _ _  _| |___  __ _ __| |"
+    echo " | |) | || | '  \| '_ \ |  _/ _` | || | / _ \/ _` / _` |"
+    echo " |___/ \_,_|_|_|_| .__/ |_| \__,_|\_, |_\___/\__,_\__,_|"
+    echo "                 |_|              |__/                   "
+    echo -e "${clear}"
+}
+
+# Display ASCII art for PAYLOAD DUMP
+display_banner
+
+# Function to check and install dependencies
+check_and_install() {
+  local package=$1
+  if ! dpkg -s "$package" >/dev/null 2>&1; then
+    echo -e "${green}Installing $package...${clear}"
+    pkg install "$package" -y
+  else
+    echo -e "${green}$package is already installed.${clear}"
+  fi
+}
+
+# Check for Python installation
+check_and_install python
+
+# Check if pip is installed
+if ! command -v pip >/dev/null 2>&1; then
+  echo -e "${green}Installing pip...${clear}"
+  pkg install python-pip -y
+  pip install --upgrade pip setuptools wheel
+else
+  echo -e "${green}pip is already installed.${clear}"
+fi
 
 # Function to retry a command if it fails
 retry() {
@@ -32,12 +66,27 @@ retry() {
   done
 }
 
-# Install protobuf with retry mechanism
-retry pip install protobuf==3.20.1 --only-binary=:all:
-if [ $? -ne 0 ]; then
-    echo -e "${clear}Error: Failed to install protobuf after multiple attempts. Exiting.${clear}"
-    exit 1
-fi
+# Function to check and install Python packages
+check_python_package() {
+  local package=$1
+  local version=$2
+  if ! python -c "import ${package}" >/dev/null 2>&1; then
+    echo -e "${green}Installing ${package}...${clear}"
+    retry pip install "${package}${version:+>=}${version}"
+    if [ $? -ne 0 ]; then
+      echo -e "${clear}Error: Failed to install ${package}. Exiting.${clear}"
+      exit 1
+    fi
+  else
+    echo -e "${green}${package} is already installed.${clear}"
+  fi
+}
+
+# Check and install required Python packages
+check_python_package "protobuf" "5.27.3"
+check_python_package "six" "1.16.0"
+check_python_package "bsdiff4" "1.1.5"
+check_python_package "brotli" "1.1.0"
 
 # Prompt the user to manually enter the path to the ROM zip file or payload.bin file
 echo -e "${green}Please enter the full path to the ROM zip file or payload.bin file:${clear}"
