@@ -33,7 +33,7 @@ cat << 'EOF' > "$dump_payload_script"
 if [ ! -f ~/payload-dumper-termux/payload_dump ]; then
     pkg install git -y
     git clone https://github.com/rhythmcache/payload-dumper-termux
-    cd ~/termux-payload-dumper
+    cd ~/payload-dumper-termux
     chmod 777 ./payload_dump
     ./payload_dump
 else
