@@ -92,33 +92,17 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
-# Unpack the boot image using magiskboot
-cd ~/Kernel-and-Boot-Extractor-From-Payload.bin
-chmod 777 ./magiskboot
-./magiskboot unpack "$extraction_dir/boot.img"
-if [ $? -ne 0 ]; then
-    echo -e "${clear}Error: Failed to unpack boot.img. Exiting.${clear}"
-    exit 1
-fi
-
-# Move the extracted files to the extraction directory
-mv ./* "$extraction_dir"
-
 # Clean up by removing unnecessary files from the extraction directory
 rm "$extraction_dir/payload.bin"
 mv "$extraction_dir/update_metadata_pb2.py" ./
 mv "$extraction_dir/payload_dumper.py" ./
-mv "$extraction_dir/magiskboot" ./
-mv "$extraction_dir/run.sh" ./
 
 # Move the necessary scripts and binaries to Termux's bin directory for easy execution
 echo -e "${green}Moving necessary scripts and binaries to /data/data/com.termux/files/usr/bin...${clear}"
-mv ~/Kernel-and-Boot-Extractor-From-Payload.bin/magiskboot $PREFIX/bin/
 mv ~/Kernel-and-Boot-Extractor-From-Payload.bin/payload_dumper.py $PREFIX/bin/
 mv ~/Kernel-and-Boot-Extractor-From-Payload.bin/update_metadata_pb2.py $PREFIX/bin/
 
 # Ensure the scripts are executable
-chmod +x $PREFIX/bin/magiskboot
 chmod +x $PREFIX/bin/payload_dumper.py
 chmod +x $PREFIX/bin/update_metadata_pb2.py
 
