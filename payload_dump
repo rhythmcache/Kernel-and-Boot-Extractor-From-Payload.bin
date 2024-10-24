@@ -39,7 +39,7 @@ check_and_install() {
 check_and_install python
 
 # Check for OpenSSL
-check_and_install openssl-tools
+check_and_install openssl-tool
 
 # Check if pip is installed
 if ! command -v pip >/dev/null 2>&1; then
