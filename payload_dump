@@ -167,8 +167,8 @@ fi
 
 # Clean up by removing unnecessary files from the extraction directory
 rm "$extraction_dir/payload.bin"
-mv "$extraction_dir/update_metadata_pb2.py" ./
-mv "$extraction_dir/payload_dumper.py" ./
+rm "$extraction_dir/update_metadata_pb2.py"
+rm "$extraction_dir/payload_dumper.py"
 
 
 # Return to home directory
@@ -176,5 +176,5 @@ cd ~
 
 # Success message
 echo -e "${green}The script was executed successfully!${clear}"
-echo -e "${green}You can now run the script by typing 'dump_payload' from any directory.${clear}"
+echo -e "${green}You can now run the script by just typing 'dump_payload' in termux.${clear}"
 echo -e "${green}Your extracted files are in the folder $extraction_dir${clear}"
