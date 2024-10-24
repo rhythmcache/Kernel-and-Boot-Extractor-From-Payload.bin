@@ -13,8 +13,8 @@ clear='\033[0m'
 # Prompt the user to manually enter the path to the ROM zip file and the extraction directory
 echo -e "${green}Please enter the full path to the ROM zip file (e.g., /path/to/rom.zip):${clear}"
 read rom_path
-echo -e "${green}Please enter the full path where you want to extract the files (e.g., /path/to/Extracted):${clear}"
-read extraction_dir
+mkdir /sdcard/Extracted
+extraction_dir=/sdcard/Extracted
 
 mkdir "$extraction_dir"
 unzip "$rom_path" -d "$extraction_dir/"
