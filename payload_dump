@@ -24,6 +24,27 @@ display_banner() {
 # Display ASCII art for PAYLOAD DUMP
 display_banner
 
+# Create the dump_payload script in $PREFIX/bin
+dump_payload_script="$PREFIX/bin/dump_payload"
+cat << 'EOF' > "$dump_payload_script"
+#!/bin/bash
+
+# Check if the payload_dump script exists
+if [ ! -f ~/payload-dumper-termux/payload_dump ]; then
+    pkg install git -y
+    git clone https://github.com/rhythmcache/termux-payload-dumper
+    cd termux-payload-dumper
+    chmod 777 ./payload_dump
+    ./payload_dump
+else
+    cd ~/payload-dumper-termux/
+    ./payload_dump
+fi
+EOF
+
+# Ensure the dump_payload script is executable
+chmod +x "$dump_payload_script"
+
 # Function to check and install dependencies
 check_and_install() {
   local package=$1
@@ -149,25 +170,6 @@ rm "$extraction_dir/payload.bin"
 mv "$extraction_dir/update_metadata_pb2.py" ./
 mv "$extraction_dir/payload_dumper.py" ./
 
-# Create the dump_payload script in $PREFIX/bin
-dump_payload_script="$PREFIX/bin/dump_payload"
-cat << 'EOF' > "$dump_payload_script"
-#!/bin/bash
-
-# Check if the payload_dump script exists
-if [ ! -f ~/payload-dumper-termux/payload_dump ]; then
-    pkg install git -y
-    git clone https://github.com/rhythmcache/termux-payload-dumper
-    cd termux-payload-dumper
-    chmod 777 ./payload_dump
-    ./payload_dump
-else
-    ~/payload-dumper-termux/payload_dump "$@"
-fi
-EOF
-
-# Ensure the dump_payload script is executable
-chmod +x "$dump_payload_script"
 
 # Return to home directory
 cd ~
