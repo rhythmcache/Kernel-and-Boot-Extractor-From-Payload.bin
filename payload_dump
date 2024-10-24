@@ -1,4 +1,5 @@
 #!/bin/bash
+termux-setup-storage
 
 # Display PAYLOAD_DUMPER Header
 echo "  ___                    ___           _              _ "
