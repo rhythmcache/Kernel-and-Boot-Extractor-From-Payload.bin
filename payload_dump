@@ -1,0 +1,126 @@
+#!/bin/bash
+
+# Kernel Extractor Tool By @e1phn
+# This tool will extract Kernel, boot.img, and all other partitions from payload.bin
+
+# Set up storage and install necessary packages
+termux-setup-storage
+pkg update && apt upgrade -y
+pkg install python -y
+pip install --upgrade pip setuptools wheel
+
+# Define color variables
+green='\033[0;32m'
+clear='\033[0m'
+
+# Function to retry a command if it fails
+retry() {
+  local n=1
+  local max=3
+  local delay=5
+  while true; do
+    "$@" && break || {
+      if [[ $n -lt $max ]]; then
+        ((n++))
+        echo "Command failed. Attempt $n/$max:"
+        sleep $delay;
+      else
+        echo "The command has failed after $n attempts."
+        return 1
+      fi
+    }
+  done
+}
+
+# Install protobuf with retry mechanism
+retry pip install protobuf==3.20.1 --only-binary=:all:
+if [ $? -ne 0 ]; then
+    echo -e "${clear}Error: Failed to install protobuf after multiple attempts. Exiting.${clear}"
+    exit 1
+fi
+
+# Prompt the user to manually enter the path to the ROM zip file
+echo -e "${green}Please enter the full path to the ROM zip file (e.g., /path/to/rom.zip):${clear}"
+read rom_path
+
+# Define the extraction directory
+extraction_dir="/sdcard/Extracted"
+
+# Check if the directory exists, if so, delete it to avoid conflicts
+if [ -d "$extraction_dir" ]; then
+    echo -e "${green}Removing old extraction directory...${clear}"
+    rm -rf "$extraction_dir"
+fi
+
+# Create the extraction directory
+mkdir -p "$extraction_dir"
+
+# Unzip the ROM zip file to the extraction directory
+unzip "$rom_path" -d "$extraction_dir/"
+if [ $? -ne 0 ]; then
+    echo -e "${clear}Error: Failed to unzip ROM file. Exiting.${clear}"
+    exit 1
+fi
+
+# Check if the necessary Python scripts are present
+if [ ! -f ./payload_dumper.py ] || [ ! -f ./update_metadata_pb2.py ]; then
+    echo -e "${clear}Error: Required Python scripts not found. Exiting.${clear}"
+    exit 1
+fi
+
+# Copy Python scripts to the extraction directory
+cp ./payload_dumper.py "$extraction_dir"
+cp ./update_metadata_pb2.py "$extraction_dir"
+
+# Change to the extraction directory
+cd "$extraction_dir"
+
+# Run the payload extraction script
+python payload_dumper.py payload.bin
+if [ $? -ne 0 ]; then
+    echo -e "${clear}Error: Failed to extract payload.bin. Exiting.${clear}"
+    exit 1
+fi
+
+# Unpack the boot image using magiskboot
+cd ~/Kernel-and-Boot-Extractor-From-Payload.bin
+chmod 777 ./magiskboot
+./magiskboot unpack "$extraction_dir/boot.img"
+if [ $? -ne 0 ]; then
+    echo -e "${clear}Error: Failed to unpack boot.img. Exiting.${clear}"
+    exit 1
+fi
+
+# Move the extracted files to the extraction directory
+mv ./* "$extraction_dir"
+
+# Clean up by removing unnecessary files from the extraction directory
+rm "$extraction_dir/payload.bin"
+mv "$extraction_dir/update_metadata_pb2.py" ./
+mv "$extraction_dir/payload_dumper.py" ./
+mv "$extraction_dir/magiskboot" ./
+mv "$extraction_dir/run.sh" ./
+
+# Move the necessary scripts and binaries to Termux's bin directory for easy execution
+echo -e "${green}Moving necessary scripts and binaries to /data/data/com.termux/files/usr/bin...${clear}"
+mv ~/Kernel-and-Boot-Extractor-From-Payload.bin/magiskboot $PREFIX/bin/
+mv ~/Kernel-and-Boot-Extractor-From-Payload.bin/payload_dumper.py $PREFIX/bin/
+mv ~/Kernel-and-Boot-Extractor-From-Payload.bin/update_metadata_pb2.py $PREFIX/bin/
+
+# Ensure the scripts are executable
+chmod +x $PREFIX/bin/magiskboot
+chmod +x $PREFIX/bin/payload_dumper.py
+chmod +x $PREFIX/bin/update_metadata_pb2.py
+
+# Move the script itself to Termux's bin directory as 'payload_dump'
+script_name="payload_dump"
+cp "$0" $PREFIX/bin/$script_name
+chmod +x $PREFIX/bin/$script_name
+
+# Return to home directory
+cd ~
+
+# Success message
+echo -e "${green}The script was executed successfully!${clear}"
+echo -e "${green}You can now run the script by typing 'payload_dump' from any directory.${clear}"
+echo -e "${green}Your extracted files are in the folder $extraction_dir${clear}"
