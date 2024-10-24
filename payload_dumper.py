@@ -1,92 +1,159 @@
-#!/usr/bin/env python
-import struct
-import hashlib
-import bz2
-import sys
+#!/bin/bash
 
-try:
-    import lzma
-except ImportError:
-    from backports import lzma
+# Kernel Extractor Tool By @e1phn
+# This tool will extract Kernel, boot.img, and all other partitions from payload.bin
 
-import update_metadata_pb2 as um
+# Set up storage
+termux-setup-storage
 
-flatten = lambda l: [item for sublist in l for item in sublist]
+# Define color variables
+green='\033[0;32m'
+clear='\033[0m'
 
-def u32(x):
-    return struct.unpack('>I', x)[0]
+# Function to display the ASCII art banner
+display_banner() {
+    echo -e "${green}"
+    echo "  ____              _              _                _"
+    echo " |  _ \  ___  _ __| |_   _   ___ | |__     ___ _ __| |__   ___ _ __ ___"
+    echo " | | | |/ _ \| '__| | | | | / _ \| '_ \   / _ \ '__| '_ \ / _ \ '__/ __|"
+    echo " | |_| | (_) | |  | | |_| || (_) | | | | |  __/ |  | | | |  __/ |  \__ \\"
+    echo " |____/ \___/|_|  |_|\__,_| \___/|_| |_|  \___|_|  |_| |_|\___|_|  |___/"
+    echo -e "${clear}"
+}
 
-def u64(x):
-    return struct.unpack('>Q', x)[0]
+# Display ASCII art for PAYLOAD_DUMPER
+display_banner
 
-def verify_contiguous(exts):
-    blocks = 0
+# Function to check and install dependencies
+check_and_install() {
+  local package=$1
+  if ! dpkg -s "$package" >/dev/null 2>&1; then
+    echo -e "${green}Installing $package...${clear}"
+    pkg install "$package" -y
+  else
+    echo -e "${green}$package is already installed.${clear}"
+  fi
+}
 
-    for ext in exts:
-        if ext.start_block != blocks:
-            return False
+# Check for Python installation
+check_and_install python
 
-        blocks += ext.num_blocks
+# Check if pip is installed
+if ! command -v pip >/dev/null 2>&1; then
+  echo -e "${green}Installing pip...${clear}"
+  pkg install python-pip -y
+  pip install --upgrade pip setuptools wheel
+else
+  echo -e "${green}pip is already installed.${clear}"
+fi
 
-    return True
+# Function to retry a command if it fails
+retry() {
+  local n=1
+  local max=3
+  local delay=5
+  while true; do
+    "$@" && break || {
+      if [[ $n -lt $max ]]; then
+        ((n++))
+        echo "Command failed. Attempt $n/$max:"
+        sleep $delay;
+      else
+        echo "The command has failed after $n attempts."
+        return 1
+      fi
+    }
+  done
+}
 
-def data_for_op(op):
-    p.seek(data_offset + op.data_offset)
-    data = p.read(op.data_length)
+# Check if protobuf is installed
+if ! python -c "import google.protobuf" >/dev/null 2>&1; then
+  echo -e "${green}Installing protobuf...${clear}"
+  retry pip install protobuf==3.20.1 --only-binary=:all:
+  if [ $? -ne 0 ]; then
+      echo -e "${clear}Error: Failed to install protobuf after multiple attempts. Exiting.${clear}"
+      exit 1
+  fi
+else
+  echo -e "${green}protobuf is already installed.${clear}"
+fi
 
-    assert hashlib.sha256(data).digest() == op.data_sha256_hash, 'operation data hash mismatch'
+# Prompt the user to manually enter the path to the ROM zip file or payload.bin file
+echo -e "${green}Please enter the full path to the ROM zip file or payload.bin file:${clear}"
+read rom_path
 
-    if op.type == op.REPLACE_XZ:
-        dec = lzma.LZMADecompressor()
-        data = dec.decompress(data) 
-    elif op.type == op.REPLACE_BZ:
-        dec = bz2.BZ2Decompressor()
-        data = dec.decompress(data) 
+# Define the extraction directory
+extraction_dir="/sdcard/Extracted"
 
-    return data
+# Check if the directory exists, if so, delete it to avoid conflicts
+if [ -d "$extraction_dir" ]; then
+    echo -e "${green}Removing old extraction directory...${clear}"
+    rm -rf "$extraction_dir"
+fi
 
-def dump_part(part):
-    print(part.partition_name)
+# Create the extraction directory
+mkdir -p "$extraction_dir"
 
-    out_file = open('%s.img' % part.partition_name, 'wb')
-    h = hashlib.sha256()
+# Check if the file is a zip or a payload.bin file
+if [[ "$rom_path" == *.zip ]]; then
+    # Unzip the ROM zip file to the extraction directory
+    echo -e "${green}Unzipping the ROM file...${clear}"
+    unzip "$rom_path" -d "$extraction_dir/"
+    if [ $? -ne 0 ]; then
+        echo -e "${clear}Error: Failed to unzip ROM file. Exiting.${clear}"
+        exit 1
+    fi
+    payload_path="$extraction_dir/payload.bin"
+else
+    # Assume the user provided a payload.bin file directly
+    echo -e "${green}Payload.bin file detected. Skipping unzipping process...${clear}"
+    payload_path="$rom_path"
+fi
 
-    for op in part.operations:
-        data = data_for_op(op)
-        h.update(data)
-        out_file.write(data)
+# Check if the necessary Python scripts are present
+if [ ! -f ./payload_dumper.py ] || [ ! -f ./update_metadata_pb2.py ]; then
+    echo -e "${clear}Error: Required Python scripts not found. Exiting.${clear}"
+    exit 1
+fi
 
-    assert h.digest() == part.new_partition_info.hash, 'partition hash mismatch'
+# Copy Python scripts to the extraction directory
+cp ./payload_dumper.py "$extraction_dir"
+cp ./update_metadata_pb2.py "$extraction_dir"
 
-p = open(sys.argv[1], 'rb')
+# Change to the extraction directory
+cd "$extraction_dir"
 
-magic = p.read(4)
-assert magic == b'CrAU'
+# Run the payload extraction script
+echo -e "${green}Extracting payload.bin...${clear}"
+python payload_dumper.py "$payload_path"
+if [ $? -ne 0 ]; then
+    echo -e "${clear}Error: Failed to extract payload.bin. Exiting.${clear}"
+    exit 1
+fi
 
-file_format_version = u64(p.read(8))
-assert file_format_version == 2
+# Clean up by removing unnecessary files from the extraction directory
+rm "$extraction_dir/payload.bin"
+mv "$extraction_dir/update_metadata_pb2.py" ./
+mv "$extraction_dir/payload_dumper.py" ./
 
-manifest_size = u64(p.read(8))
+# Move the necessary scripts and binaries to Termux's bin directory for easy execution
+echo -e "${green}Moving necessary scripts and binaries to /data/data/com.termux/files/usr/bin...${clear}"
+mv ~/Kernel-and-Boot-Extractor-From-Payload.bin/payload_dumper.py $PREFIX/bin/
+mv ~/Kernel-and-Boot-Extractor-From-Payload.bin/update_metadata_pb2.py $PREFIX/bin/
 
-metadata_signature_size = 0
+# Ensure the scripts are executable
+chmod +x $PREFIX/bin/payload_dumper.py
+chmod +x $PREFIX/bin/update_metadata_pb2.py
 
-if file_format_version > 1:
-    metadata_signature_size = u32(p.read(4))
+# Move the script itself to Termux's bin directory as 'payload_dump'
+script_name="payload_dump"
+cp "$0" $PREFIX/bin/$script_name
+chmod +x $PREFIX/bin/$script_name
 
-manifest = p.read(manifest_size)
-metadata_signature = p.read(metadata_signature_size)
+# Return to home directory
+cd ~
 
-data_offset = p.tell()
-
-dam = um.DeltaArchiveManifest()
-dam.ParseFromString(manifest)
-
-for part in dam.partitions:
-    for op in part.operations:
-        assert op.type in (op.REPLACE, op.REPLACE_BZ, op.REPLACE_XZ), \
-                'unsupported op'
-
-    extents = flatten([op.dst_extents for op in part.operations])
-    assert verify_contiguous(extents), 'operations do not span full image'
-
-    dump_part(part)
+# Success message
+echo -e "${green}The script was executed successfully!${clear}"
+echo -e "${green}You can now run the script by typing 'payload_dump' from any directory.${clear}"
+echo -e "${green}Your extracted files are in the folder $extraction_dir${clear}"
