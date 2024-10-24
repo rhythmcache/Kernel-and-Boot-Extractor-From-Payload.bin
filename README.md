@@ -12,3 +12,5 @@ cd payload-dumper-termux
 chmod 777 ./payload_dump
 ./payload_dump
 ```
+
+python scripts forked from vm03 payload dumper
