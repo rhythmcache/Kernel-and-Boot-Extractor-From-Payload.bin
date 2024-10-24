@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# Kernel Extractor Tool By @e1phn
-# This tool will extract Kernel, boot.img, and all other partitions from payload.bin
+# Boot Image Extractor Tool By @e1phn
+# This tool will extract  boot.img, and all other partitions from payload.bin
 
 # Set up storage
 termux-setup-storage
