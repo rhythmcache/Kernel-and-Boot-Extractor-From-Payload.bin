@@ -7,8 +7,8 @@ This Script only Support ROMs of Dynamic Partitioned Device i•e ROMs Zip which
 
 ```
 pkg install git -y
-git clone https://github.com/rhythmcache/Kernel-and-Boot-Extractor-From-Payload.bin
-cd Kernel-and-Boot-Extractor-From-Payload.bin
+git clone https://github.com/rhythmcache/payload-dumper-termux
+cd payload-dumper-termux
 chmod 777 ./payload_dump
 ./payload_dump
 ```
