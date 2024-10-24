@@ -1,6 +1,6 @@
 # Kernel Extractor Tool By @e1phn
 # This tool will extract Kernel, boot.img, and all other partitions from payload.bin
-
+termux-setup-storage
 pkg install python -y
 pip install --upgrade pip
 pip install protobuf
