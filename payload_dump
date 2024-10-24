@@ -39,8 +39,8 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
-# Prompt the user to manually enter the path to the ROM zip file
-echo -e "${green}Please enter the full path to the ROM zip file (e.g., /path/to/rom.zip):${clear}"
+# Prompt the user to manually enter the path to the ROM zip file or payload.bin file
+echo -e "${green}Please enter the full path to the ROM zip file or payload.bin file:${clear}"
 read rom_path
 
 # Define the extraction directory
@@ -55,11 +55,20 @@ fi
 # Create the extraction directory
 mkdir -p "$extraction_dir"
 
-# Unzip the ROM zip file to the extraction directory
-unzip "$rom_path" -d "$extraction_dir/"
-if [ $? -ne 0 ]; then
-    echo -e "${clear}Error: Failed to unzip ROM file. Exiting.${clear}"
-    exit 1
+# Check if the file is a zip or a payload.bin file
+if [[ "$rom_path" == *.zip ]]; then
+    # Unzip the ROM zip file to the extraction directory
+    echo -e "${green}Unzipping the ROM file...${clear}"
+    unzip "$rom_path" -d "$extraction_dir/"
+    if [ $? -ne 0 ]; then
+        echo -e "${clear}Error: Failed to unzip ROM file. Exiting.${clear}"
+        exit 1
+    fi
+    payload_path="$extraction_dir/payload.bin"
+else
+    # Assume the user provided a payload.bin file directly
+    echo -e "${green}Payload.bin file detected. Skipping unzipping process...${clear}"
+    payload_path="$rom_path"
 fi
 
 # Check if the necessary Python scripts are present
@@ -76,7 +85,8 @@ cp ./update_metadata_pb2.py "$extraction_dir"
 cd "$extraction_dir"
 
 # Run the payload extraction script
-python payload_dumper.py payload.bin
+echo -e "${green}Extracting payload.bin...${clear}"
+python payload_dumper.py "$payload_path"
 if [ $? -ne 0 ]; then
     echo -e "${clear}Error: Failed to extract payload.bin. Exiting.${clear}"
     exit 1
