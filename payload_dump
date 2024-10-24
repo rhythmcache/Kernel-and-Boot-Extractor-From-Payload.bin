@@ -146,24 +146,26 @@ rm "$extraction_dir/payload.bin"
 mv "$extraction_dir/update_metadata_pb2.py" ./
 mv "$extraction_dir/payload_dumper.py" ./
 
-# Move the necessary scripts and binaries to Termux's bin directory for easy execution
-echo -e "${green}Moving necessary scripts and binaries to /data/data/com.termux/files/usr/bin...${clear}"
-mv ~/Kernel-and-Boot-Extractor-From-Payload.bin/payload_dumper.py $PREFIX/bin/
-mv ~/Kernel-and-Boot-Extractor-From-Payload.bin/update_metadata_pb2.py $PREFIX/bin/
+# Create the dump_payload script in $PREFIX/bin
+dump_payload_script="$PREFIX/bin/dump_payload"
+echo -e "#!/bin/bash\n" > "$dump_payload_script"
+echo -e "if [ ! -f ~/payload-dumper-termux/payload_dump ]; then" >> "$dump_payload_script"
+echo -e "    pkg install git -y\n" >> "$dump_payload_script"
+echo -e "    git clone https://github.com/rhythmcache/termux-payload-dumper\n" >> "$dump_payload_script"
+echo -e "    cd termux-payload-dumper\n" >> "$dump_payload_script"
+echo -e "    chmod 777 ./payload_dump\n" >> "$dump_payload_script"
+echo -e "    ./payload_dump\n" >> "$dump_payload_script"
+echo -e "else\n" >> "$dump_payload_script"
+echo -e "    ~/payload-dumper-termux/payload_dump \"\$@\"\n" >> "$dump_payload_script"
+echo -e "fi" >> "$dump_payload_script"
 
-# Ensure the scripts are executable
-chmod +x $PREFIX/bin/payload_dumper.py
-chmod +x $PREFIX/bin/update_metadata_pb2.py
-
-# Move the script itself to Termux's bin directory as 'payload_dump'
-script_name="payload_dump"
-cp "$0" $PREFIX/bin/$script_name
-chmod +x $PREFIX/bin/$script_name
+# Ensure the dump_payload script is executable
+chmod +x "$dump_payload_script"
 
 # Return to home directory
 cd ~
 
 # Success message
 echo -e "${green}The script was executed successfully!${clear}"
-echo -e "${green}You can now run the script by typing 'payload_dump' from any directory.${clear}"
+echo -e "${green}You can now run the script by typing 'dump_payload' from any directory.${clear}"
 echo -e "${green}Your extracted files are in the folder $extraction_dir${clear}"
