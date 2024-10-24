@@ -1,8 +1,5 @@
 #!/bin/bash
 
-#setup storage
-termux-setup-storage
-
 # Display PAYLOAD_DUMPER Header
 echo "  ___                    ___           _              _ "
 echo " |   \ _  _ _ __  _ __  | _ \__ _ _  _| |___  __ _ __| |"
@@ -70,7 +67,7 @@ python payload_dumper.py "$payload_file"
 
 # Create the script to trigger the payload_dump from $PREFIX/bin
 dump_payload_script="$PREFIX/bin/dump_payload"
-cat << 'EOF' > "$dump_payload_script"
+cat > "$dump_payload_script" << 'EOF'
 #!/bin/bash
 if [ ! -f "$PREFIX/bin/payload_dump" ]; then
     pkg install git -y
