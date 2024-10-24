@@ -1,89 +1,178 @@
 #!/bin/bash
+
+# Kernel Extractor Tool By @e1phn
+# This tool will extract Kernel, boot.img, and all other partitions from payload.bin
+
+# Set up storage
 termux-setup-storage
 
-# Display PAYLOAD_DUMPER Header
-echo "  ___                    ___           _              _ "
-echo " |   \ _  _ _ __  _ __  | _ \__ _ _  _| |___  __ _ __| |"
-echo " | |) | || | '  \| '_ \ |  _/ _` | || | / _ \/ _` / _` |"
-echo " |___/ \_,_|_|_|_| .__/ |_| \__,_|\_, |_\___/\__,_\__,_|"
-echo "                 |_|              |__/                   "
+# Define color variables
+green='\033[0;32m'
+clear='\033[0m'
 
-# Check for required dependencies
-echo "Checking for required dependencies..."
-
-# Function to install Python packages
-install_python_package() {
-    package=$1
-    python -m pip install $package
-    if [ $? -ne 0 ]; then
-        echo "Failed to install $package. Installing openssl-tool and retrying..."
-        pkg install openssl-tool -y
-        python -m pip install $package
-    fi
+# Function to display the ASCII art banner
+display_banner() {
+    echo -e "${green}"
+    echo "  ___                    ___           _              _ "
+    echo " |   \\ _  _ _ __  _ __  | _ \\__ _ _  _| |___  __ _ __| |"
+    echo " | |) | || | '  \\| '_ \\ |  _/ _\` | || | / _ \\/ _\` / _\` |"
+    echo " |___/ \\_,_|_|_|_| .__/ |_| \\__,_|\\_, |_/\\___/\\__,_\\__,_|"
+    echo "                 |_|              |__/                   "
+    echo -e "${clear}"
 }
 
-# Check if python is installed, if not install it
-if ! command -v python &> /dev/null; then
-    echo "Python not found. Installing..."
-    pkg install python -y
+# Display ASCII art for PAYLOAD DUMP
+display_banner
+
+# Function to check and install dependencies
+check_and_install() {
+  local package=$1
+  if ! dpkg -s "$package" >/dev/null 2>&1; then
+    echo -e "${green}Installing $package...${clear}"
+    pkg install "$package" -y
+  else
+    echo -e "${green}$package is already installed.${clear}"
+  fi
+}
+
+# Check for Python installation
+check_and_install python
+
+# Check for OpenSSL
+check_and_install openssl-tools
+
+# Check if pip is installed
+if ! command -v pip >/dev/null 2>&1; then
+  echo -e "${green}Installing pip...${clear}"
+  pkg install python-pip -y
+  pip install --upgrade pip setuptools wheel
+else
+  echo -e "${green}pip is already installed.${clear}"
 fi
 
-# Upgrade pip
-pip install --upgrade pip
+# Function to retry a command if it fails
+retry() {
+  local n=1
+  local max=3
+  local delay=5
+  while true; do
+    "$@" && break || {
+      if [[ $n -lt $max ]]; then
+        ((n++))
+        echo "Command failed. Attempt $n/$max:"
+        sleep $delay;
+      else
+        echo "The command has failed after $n attempts."
+        return 1
+      fi
+    }
+  done
+}
 
-# Install required Python packages
-install_python_package "protobuf==5.27.3"
-install_python_package "six==1.16.0"
-install_python_package "bsdiff4==1.1.5"
-install_python_package "brotli==1.1.0"
+# Function to check and install Python packages
+check_python_package() {
+  local package=$1
+  local version=$2
+  if ! python -c "import ${package}" >/dev/null 2>&1; then
+    echo -e "${green}Installing ${package}...${clear}"
+    retry pip install "${package}${version:+>=}${version}"
+    if [ $? -ne 0 ]; then
+      echo -e "${clear}Error: Failed to install ${package}. Exiting.${clear}"
+      exit 1
+    fi
+  else
+    echo -e "${green}${package} is already installed.${clear}"
+  fi
+}
 
-# Prompt the user for the ROM zip file path or payload.bin path
-echo "Please enter the full path to the ROM zip file or payload.bin file (e.g., /path/to/rom.zip or /path/to/payload.bin):"
-read file_path
+# Check and install required Python packages
+check_python_package "protobuf" "5.27.3"
+check_python_package "six" "1.16.0"
+check_python_package "bsdiff4" "1.1.5"
+check_python_package "brotli" "1.1.0"
 
-# Create extraction directory
+# Prompt the user to manually enter the path to the ROM zip file or payload.bin file
+echo -e "${green}Please enter the full path to the ROM zip file or payload.bin file:${clear}"
+read rom_path
+
+# Define the extraction directory
 extraction_dir="/sdcard/Extracted"
+
+# Check if the directory exists, if so, delete it to avoid conflicts
+if [ -d "$extraction_dir" ]; then
+    echo -e "${green}Removing old extraction directory...${clear}"
+    rm -rf "$extraction_dir"
+fi
+
+# Create the extraction directory
 mkdir -p "$extraction_dir"
 
-# Check if the provided file is a zip file or payload.bin
-if [[ "$file_path" == *.zip ]]; then
-    echo "Unzipping ROM file..."
-    unzip "$file_path" -d "$extraction_dir/"
-    payload_file="$extraction_dir/payload.bin"
-elif [[ "$file_path" == *payload.bin ]]; then
-    echo "Payload.bin file detected. Skipping unzipping process..."
-    payload_file="$file_path"
+# Check if the file is a zip or a payload.bin file
+if [[ "$rom_path" == *.zip ]]; then
+    # Unzip the ROM zip file to the extraction directory
+    echo -e "${green}Unzipping the ROM file...${clear}"
+    unzip "$rom_path" -d "$extraction_dir/"
+    if [ $? -ne 0 ]; then
+        echo -e "${clear}Error: Failed to unzip ROM file. Exiting.${clear}"
+        exit 1
+    fi
+    payload_path="$extraction_dir/payload.bin"
 else
-    echo "Invalid file type. Please provide a valid ROM zip file or payload.bin."
+    # Assume the user provided a payload.bin file directly
+    echo -e "${green}Payload.bin file detected. Skipping unzipping process...${clear}"
+    payload_path="$rom_path"
+fi
+
+# Check if the necessary Python scripts are present
+if [ ! -f ./payload_dumper.py ] || [ ! -f ./update_metadata_pb2.py ]; then
+    echo -e "${clear}Error: Required Python scripts not found. Exiting.${clear}"
     exit 1
 fi
 
-# Copy Python scripts to extraction directory
+# Copy Python scripts to the extraction directory
 cp ./payload_dumper.py "$extraction_dir"
 cp ./update_metadata_pb2.py "$extraction_dir"
 
-# Extract payload.bin using the payload dumper script
-cd "$extraction_dir" || exit
-python payload_dumper.py "$payload_file"
+# Change to the extraction directory
+cd "$extraction_dir"
 
-# Create the script to trigger the payload_dump from $PREFIX/bin
+# Run the payload extraction script
+echo -e "${green}Extracting payload.bin...${clear}"
+python payload_dumper.py "$payload_path"
+if [ $? -ne 0 ]; then
+    echo -e "${clear}Error: Failed to extract payload.bin. Exiting.${clear}"
+    exit 1
+fi
+
+# Clean up by removing unnecessary files from the extraction directory
+rm "$extraction_dir/payload.bin"
+mv "$extraction_dir/update_metadata_pb2.py" ./
+mv "$extraction_dir/payload_dumper.py" ./
+
+# Create the dump_payload script in $PREFIX/bin
 dump_payload_script="$PREFIX/bin/dump_payload"
-cat > "$dump_payload_script" << 'EOF'
+cat << 'EOF' > "$dump_payload_script"
 #!/bin/bash
-if [ ! -f "$PREFIX/bin/payload_dump" ]; then
+
+# Check if the payload_dump script exists
+if [ ! -f ~/payload-dumper-termux/payload_dump ]; then
     pkg install git -y
     git clone https://github.com/rhythmcache/termux-payload-dumper
-    cd termux-payload-dumper || exit
-    chmod +x ./payload_dump
+    cd termux-payload-dumper
+    chmod 777 ./payload_dump
     ./payload_dump
 else
-    "$PREFIX/bin/payload_dump"
+    ~/payload-dumper-termux/payload_dump "$@"
 fi
 EOF
 
-# Make the dump_payload script executable
+# Ensure the dump_payload script is executable
 chmod +x "$dump_payload_script"
 
-# Final message
-echo "The script has been executed successfully!"
-echo "Your extracted files are in the folder: $extraction_dir"
+# Return to home directory
+cd ~
+
+# Success message
+echo -e "${green}The script was executed successfully!${clear}"
+echo -e "${green}You can now run the script by typing 'dump_payload' from any directory.${clear}"
+echo -e "${green}Your extracted files are in the folder $extraction_dir${clear}"
